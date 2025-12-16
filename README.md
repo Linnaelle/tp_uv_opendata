@@ -225,27 +225,6 @@ QUALITY_THRESHOLDS = {
 }
 ```
 
-## 🐛 Dépannage
-
-### Timeout OpenMeteo
-→ Réduire `max_cities` ou augmenter `timeout` dans `config.py`
-
-### Ville non trouvée
-→ Vérifier l'orthographe exacte (sensible à la casse)
-
-### Tests échouent
-→ Vérifier connexion internet pour les tests d'API
-
-## 👤 Auteur
-
-**[Votre Nom]**  
-TP2 - Pipeline d'acquisition et transformation  
-Combinaison C : Météo + Géo
-
-## 📅 Date
-
-[Date actuelle]
-
 ## 🔗 Ressources
 
 - [Documentation uv](https://docs.astral.sh/uv/)
