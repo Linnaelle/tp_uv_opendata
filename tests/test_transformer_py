@@ -1,0 +1,79 @@
+"""Tests pour le transformer météo."""
+import pytest
+import pandas as pd
+from datetime import date
+from pipeline.transformer import WeatherTransformer
+
+
+class TestWeatherTransformer:
+    """Tests pour WeatherTransformer."""
+    
+    @pytest.fixture
+    def sample_weather_df(self):
+        """DataFrame météo de test."""
+        return pd.DataFrame({
+            'city': ['Paris', 'Lyon', 'Paris'],
+            'forecast_date': ['2024-01-01', '2024-01-01', '2024-01-01'],
+            'temperature_max': [15.0, 14.0, 15.0],
+            'temperature_min': [8.0, 7.0, 8.0],
+            'precipitation_sum': [0, None, 0],
+            'wind_speed_max': [25.0, 30.0, 25.0],
+        })
+    
+    def test_remove_duplicates(self, sample_weather_df):
+        """Test suppression des doublons."""
+        transformer = WeatherTransformer(sample_weather_df)
+        result = transformer.remove_duplicates().get_result()
+        
+        # Paris 2024-01-01 doit être dédupliqué
+        assert len(result) == 2
+        assert result['city'].nunique() == 2
+    
+    def test_handle_missing_values(self, sample_weather_df):
+        """Test gestion des valeurs manquantes."""
+        transformer = WeatherTransformer(sample_weather_df)
+        result = transformer.handle_missing_values().get_result()
+        
+        # precipitation_sum null → 0
+        assert result['precipitation_sum'].isnull().sum() == 0
+        assert result.loc[1, 'precipitation_sum'] == 0
+    
+    def test_add_derived_columns(self, sample_weather_df):
+        """Test ajout de colonnes dérivées."""
+        transformer = WeatherTransformer(sample_weather_df)
+        result = transformer.add_derived_columns().get_result()
+        
+        # Température moyenne
+        assert 'temperature_avg' in result.columns
+        assert result.loc[0, 'temperature_avg'] == 11.5  # (15+8)/2
+        
+        # Amplitude thermique
+        assert 'temperature_range' in result.columns
+        assert result.loc[0, 'temperature_range'] == 7.0  # 15-8
+    
+    def test_filter_outliers(self, sample_weather_df):
+        """Test filtrage des outliers."""
+        # Ajouter une température aberrante
+        df_with_outlier = sample_weather_df.copy()
+        df_with_outlier.loc[0, 'temperature_max'] = 999
+        
+        transformer = WeatherTransformer(df_with_outlier)
+        result = transformer.filter_outliers().get_result()
+        
+        # La ligne avec 999°C doit être supprimée
+        assert len(result) < len(df_with_outlier)
+        assert result['temperature_max'].max() < 100
+    
+    def test_chaining(self, sample_weather_df):
+        """Test chaînage des transformations."""
+        transformer = WeatherTransformer(sample_weather_df)
+        result = (
+            transformer
+            .remove_duplicates()
+            .handle_missing_values()
+            .add_derived_columns()
+            .get_result()
+        )
+        
+        assert len(transformer.transformations_applied) >= 3
+        assert 'temperature_avg' in result.columns
